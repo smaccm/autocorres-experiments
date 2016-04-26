@@ -1,26 +1,23 @@
 /* #include <stdio.h> */
-unsigned int sum(const unsigned int x) {
 
-  unsigned int s = 0;
+struct integer_result {
+  unsigned char overflow;
+  unsigned int result;
+};
+
+struct integer_result sum(const unsigned int x) {
+
+  struct integer_result r = {0,0};
   unsigned int i = 0;
   while (x >= i) {
-    s += i;
+    if( r.result+i < i || i+1 < i ) {
+      r.overflow = 1;
+      //break; - I do not know how to reason through this yet.
+    } 
+    r.result += i;
     i += 1;
   }
-  return s;
+  return r;
 }
 
-
-/* int main() {
-
-  unsigned int c = 0;
-  for(c=0;c<50000;c++) {
-    if(sum(c) != (c*(c+1))/2) {
-      printf("%u\n",sum(c));
-      printf("%u\n",c*(c+1)/2);
-      return 0;
-    }
-  }
-  return 0;
-} */
 
