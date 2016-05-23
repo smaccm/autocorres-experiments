@@ -1,39 +1,23 @@
 theory sum imports
   "../../tools/autocorres/AutoCorres"
+ Word
+ WordBitwise
 begin
 text{*
 
-I would like to prove the correctness of the following c function that calculates the result of 
-summing integers from 0 to x. If an integer overflow occurs then as much is noted in the result
-and the function immediately returns.
+Suppose we want to prove the correctness of a c function that calculates the
+sum of numbers from 0 to x by iterating through those numbers and aggregating 
+the sum of each number. The function actually returns a structure with two 
+fields: one indicates the value from aggregating the sum and the other 
+indicates whether an overflow occurred. The actually function can be found in 
+the sum.c file.
 
-struct integer_result {
-  unsigned char overflow;
-  unsigned int result;
-};
-
-struct integer_result sum(const unsigned int x) {
-
-  struct integer_result r;
-  r.overflow = 0;
-  r.result = 0;
-  unsigned int i = 0;
-  while (x >= i) {
-    if( r.result+i < i || i+1 < i ) {
-      r.overflow = 1;
-      break;
-    } 
-    r.result += i;
-    i += 1;
-    
-  }
-  return r;
-}
 
 \section{The correctness of a naive sum program}
 
-As a way to get a handle on proof of the above program. I considered, what I thought would be, a 
-simpler proof on a c-like program that operated on naturals numbers:
+As a way to get a handle on proof of the above program. I considered, what I 
+thought would be, a simpler proof on a c-like program that operated on naturals 
+numbers:
 
 s = s'
 i = i' // where i' <= x
@@ -43,12 +27,12 @@ while (x <= i) {
 }
 
 Here we let s' and i' be arbitrary provided i' <= x. When s' and i' are zero, we have a 
-sum the naive sum implementation for the natural numbers. I would like to prove that for all s' and 
+naive sum implementation for the natural numbers. I would like to prove that for all s' and 
 i', if i' <= x then after the loop completes s = s' + sum(0,x) - sum(0,i-1). The equation in the 
 consequent can be simplified to 2*s = 2*s' + x*(x+1) - i*(i-1). In the process of reasoning about
 this property it becomes necessary to do algebraic manipulation of natural number equations 
 involving subtraction. This can be rather messy; algebraic manipulations valid under integers 
-might longer be valid under natural numbers. Overcoming this, involves showing that whenever the
+might no longer be valid under natural numbers. Overcoming this, involves showing that whenever the
 expression "a - b" occurs that b < a or b = a. This is the strategy that is used in the following 
 proof.
 
@@ -129,21 +113,69 @@ autocorres [ ts_rules = nondet ] "./sum.c"
 context sum begin
 thm sum'_def
 
+(* uint_plus_simple, word_of_int_inverse*)
+
+
+lemma foo:" \<lbrakk>0 \<le> x; 0 < (b::32 word); x < 4294967296; \<not> result_C a + b \<le> result_C a; overflow_C a \<noteq> 1; 2 * uint (result_C a) = x * (x + 1) - uint b * (uint b + 1);
+            uint (word_of_int x) = x\<rbrakk>
+           \<Longrightarrow> 2 * uint (result_C a + b) = x * (x + 1) - uint (b - 1) * (uint (b - 1) + 1)"
+proof -
+  assume A:" 2 * uint (result_C a) = x * (x + 1) - uint b * (uint b + 1)"
+  assume "\<not> result_C a + b \<le> result_C a"
+  then have B:"result_C a + b > result_C a" by simp
+  then have C:"b > 0" using word_neq_0_conv by fastforce
+  then have "2 * uint (result_C a) + 2 * uint b = x * (x + 1) - uint b * (uint b + 1) + 2 * uint b" using A by simp
+  then have "2 * (uint (result_C a) + uint b) = x * (x + 1) - uint b * (uint b + 1) + 2 * uint b" by simp
+  then have "2 * uint (result_C a + b) = x * (x + 1) - uint b * (uint b + 1) + 2 * uint b" using B by (simp add: uint_plus_simple)
+  then have "2 * uint (result_C a + b) = x * (x + 1) - (uint b * uint b + uint b) + 2 * uint b" by (metis (no_types, hide_lams) diff_diff_eq2 diff_zero mult.right_neutral mult_eq_0_iff right_diff_distrib)
+  then have "2 * uint (result_C a + b) = x * (x + 1) - uint b * uint b - uint b + 2 * uint b" by simp
+  then have "2 * uint (result_C a + b) = x * (x + 1) - uint b * uint b + uint b" by simp
+  then have "2 * uint (result_C a + b) = x * (x + 1) - (uint b * uint b - uint b)" by simp
+  then have "2 * uint (result_C a + b) = x * (x + 1) - (uint b * (uint b - 1))" by (simp add: int_distrib(4))
+  then have "2 * uint (result_C a + b) = x * (x + 1) - ((uint b - 1) * uint b)" by simp  
+  then have "2 * uint (result_C a + b) = x * (x + 1) - (uint (b - 1) * uint b)" using C by (metis add.left_neutral linorder_not_less uint_1 uint_eq_0 uint_minus_simple_alt word_less_def zless_imp_add1_zle)
+  then have "2 * uint (result_C a + b) = x * (x + 1) - (uint (b - 1) * (uint (b - 1 + 1)))" by simp
+  then have "2 * uint (result_C a + b) = x * (x + 1) - uint (b - 1) * (uint (b - 1) + 1)" using C by (metis dual_order.strict_iff_order eq_diff_eq gt0_iff_gem1 uint_1 uint_plus_simple)
+  thus ?thesis by simp
+qed
+
+
 lemma "
-  \<lbrace> \<lambda> a. x \<ge> 0 \<rbrace> 
- sum' (word_of_int x)
-  \<lbrace> \<lambda> r a. 2*(result_C r) = (word_of_int x) * ((word_of_int x) + 1) \<or> overflow_C r = 1\<rbrace>!
+  \<lbrace> \<lambda> a. x \<ge> 0 \<and> 2^32 > x \<rbrace> 
+ sum' ((word_of_int x)::32 word)
+  \<lbrace> \<lambda> r a. 2 * uint (result_C r) = x * (x + 1) \<or> overflow_C r = 1\<rbrace>!
 "
-apply (rule validNF_assume_pre)
 apply (unfold sum'_def)
 apply clarsimp
 apply (subst whileLoop_add_inv [where 
-        I = " \<lambda> (i,r) a. i \<le> (word_of_int x) + 1 \<and> (2*(result_C r) = i * (i - 1) \<or> overflow_C r = 1)" 
-        and M = "\<lambda>((i,_),a). unat ((word_of_int x)+1-i)"])
-apply wp
+        I = " \<lambda> (r,i) a. x \<ge> 0 \<and> 2^32 > x \<and> (((2 * uint (result_C r) = (x * (x + 1)) - (uint i * ((uint i) + 1)))) \<or> overflow_C r = 1)" 
+        and M = "\<lambda>((_,i),a). unat i"])
+apply wp 
 apply clarsimp
-oops
+apply (auto simp: measure_unat)
+defer
+using uint_eq_0 word_neq_0_conv apply blast
+using word_of_int_inverse[of x "(word_of_int x)::32 word"] apply auto
+using foo apply auto
+done
 
 end
+text{*
+\section{Summary}
 
+This exercise can be used to capture some guidelines when proving properties
+about mathematical computations on integers:
+
+1) Attempt to minimize the need for natural number subtraction; it can 
+   unnecessarily complicate reason. When not done, additional properties may
+   have to be shown to handle cases where traditional integer subtraction is 
+   truncated.
+
+2) Code should explicitly check and handle possible occurrences of integer
+   overflow/underflow. There seems to be now way in autocorress to prove 
+   properties under the assumption that the code does not exhibit such errors 
+   without explicitly handling them within the code.
+
+
+*}
 end
