@@ -5,15 +5,64 @@ theory sum imports
 begin
 text{*
 
-Suppose we want to prove the correctness of a c function that calculates the
-sum of numbers from 0 to x by iterating through those numbers and aggregating 
-the sum of each number. The function actually returns a structure with two 
-fields: one indicates the value from aggregating the sum and the other 
-indicates whether an overflow occurred. The actually function can be found in 
-the sum.c file.
+\section{Summary}
 
+What follows is an experiment in trying to prove the correctness of a c function
+that calculates the sum of numbers from 0 to x in a naive fashion, i.e.,
+iteratively. AutoCorress monadically encodes c programs with faithful hardware
+representations of primitive types, e.g., words, bytes. Thus, when reasoning
+over integers and their corresponding operations, overflow must be considered.
 
-\section{The correctness of a naive sum program}
+The first attempt to prove correctness over such a function failed. The function
+did not explicitly handle occurrences of overflow resulting in certain proof
+obligation that would have required tedious reasoning about 32 bit words.
+Operating under the false assumption that there would be some way to weaken the
+correctness property to sum evaluations where overflow did not occur, a focus
+was made on trying to prove correctness on a conceptual implementation of this
+naive sum directly in AutoCorress's monadic encoding of c where all 32 bit word
+types were replaced with natural numbers.
+
+That exercise along with quickstart document found in the AutoCorress repository
+revealed, what may be, a high-level methodology for using AutoCorress that goes
+as follows:
+
+ 1) specify the property to be proven
+
+ 2) apply the "clarsimp" tactic to simplify the property to be proved
+
+ 3) specify the loop invariant and inductive measure using the
+ "whileLoop_add_inv"
+
+ 4) apply the weakest precondition tactic "wp"; this hopefully extracts proof
+ obligations by percolating the loop invariant and inductive measure backwards
+ through the loop under investigation
+
+ 5) prove the resulting proof obligations
+
+Another outcome of this first attempt was a practical example of how reasoning
+over natural numbers when subtraction is involved can be tedious. This exercise
+is the content of the section titled "Correctness of Direct Monadic Sum Function".
+
+After completing the exercise described above and looking through the seL4
+code/proofs it seemed that weakening the correctness property to ignore overflow
+occurrences was not the correct approach; throughout the seL4 code overflow is
+explicitly handled. Therefore, I modified the naive sum c function to:
+
+ 1) return a structure with a field for the result and a field indicating
+ whether an overflow occurred
+
+ 2) if the previous (the sum result from the last iteration) aggregate is
+ greater than or equal to the current aggregate then set the overflow indicator
+ field to one.
+
+ 3) the loop counts down from the desired x and terminates before 0 is reached;
+ this ensures the overflow field will only be set when overflow actually
+ occurs.
+
+The c sum function modified to explictly handle overflow is proved in the
+section titled "Correctness of C Sum Function."
+
+\section{Correctness of Direct Monadic Sum Function}
 
 As a way to get a handle on proof of the above program. I considered, what I 
 thought would be, a simpler proof on a c-like program that operated on naturals 
@@ -104,7 +153,7 @@ using less_Suc_eq_le mult_le_mono by fastforce
 
 text{*
 
-\section{Desired property}
+\section{Correctness of C Sum Function}
 
 *}
 
@@ -114,6 +163,8 @@ context sum begin
 thm sum'_def
 
 (* uint_plus_simple, word_of_int_inverse*)
+(* Talk about the difficulty in finding the lemma that should be used and the
+   amount of time spent recreating the wheel in with respect to this lemma. *)
 
 
 lemma foo:" \<lbrakk>0 \<le> x; 0 < (b::32 word); x < 4294967296; \<not> result_C a + b \<le> result_C a; overflow_C a \<noteq> 1; 2 * uint (result_C a) = x * (x + 1) - uint b * (uint b + 1);
