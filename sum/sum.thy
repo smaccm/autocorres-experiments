@@ -7,7 +7,7 @@ text{*
 
 \section{Summary}
 
-What follows is an experiment in trying to prove the correctness of a c function
+What follows is an experiment in trying to prove the correctness of a C function
 that calculates the sum of numbers from 0 to x in a naive fashion, i.e.,
 iteratively. AutoCorress monadically encodes c programs with faithful hardware
 representations of primitive types, e.g., words, bytes. Thus, when reasoning
@@ -15,11 +15,11 @@ over integers and their corresponding operations, overflow must be considered.
 
 The first attempt to prove correctness over such a function failed. The function
 did not explicitly handle occurrences of overflow resulting in certain proof
-obligation that would have required tedious reasoning about 32 bit words.
+obligations that would have required tedious reasoning about 32 bit words.
 Operating under the false assumption that there would be some way to weaken the
 correctness property to sum evaluations where overflow did not occur, a focus
 was made on trying to prove correctness on a conceptual implementation of this
-naive sum directly in AutoCorress's monadic encoding of c where all 32 bit word
+naive sum directly in AutoCorress's monadic encoding of C where all 32 bit word
 types were replaced with natural numbers.
 
 That exercise along with quickstart document found in the AutoCorress repository
@@ -40,12 +40,12 @@ as follows:
  5) prove the resulting proof obligations
 
 Another outcome of this first attempt was a practical example of how reasoning
-over natural numbers when subtraction is involved can be tedious. This exercise
-is the content of the section titled "Correctness of Direct Monadic Sum Function".
+involving natural number subtraction can complicate matters. This work is the
+content of the section titled "Correctness of Direct Monadic Sum Function".
 
 After completing the exercise described above and looking through the seL4
 code/proofs it seemed that weakening the correctness property to ignore overflow
-occurrences was not the correct approach; throughout the seL4 code overflow is
+occurrences was not the correct approach; throughout the seL4 code, overflow is
 explicitly handled. Therefore, I modified the naive sum c function to:
 
  1) return a structure with a field for the result and a field indicating
@@ -59,15 +59,15 @@ explicitly handled. Therefore, I modified the naive sum c function to:
  this ensures the overflow field will only be set when overflow actually
  occurs.
 
-The c sum function modified to explictly handle overflow is proved in the
+The C sum function modified to explictly handle overflow is proved in the
 section titled "Correctness of C Sum Function."
 
 \section{Correctness of Direct Monadic Sum Function}
 
-As stated above, I simplified the original task initially to focus on reasoning
-about correctness without the complications of having to consider integer
-overflow. More specifically, I considered, what I thought would be, a simpler
-proof on a c-like program that operated on naturals numbers:
+As stated above, the original task was simplified initially to focus on
+reasoning about correctness without the complications of having to consider
+overflow. More specifically, I considered, what I thought would be, a
+simpler proof on a c-like program that operated on naturals numbers:
 
 s = s'
 i = i' // where i' <= x
@@ -156,7 +156,7 @@ text{*
 
 \section{Correctness of C Sum Function}
 
-Now we prove correctness of a C function that naively sums integers from 0 to
+Now a proof of correctness of the C function that naively sums integers from 0 to
 x. Recall that, as first mentioned in the summary, we have changed a simple
 naive sum function like:
 
@@ -207,7 +207,7 @@ tactics to combine multiple steps. However, certain steps seemed to result in
 no intuitive way for the proof to go through and sledgehammer did not find any
 solution.
 
-A final pecularity of this proof; it should be possible to replace the defer
+A final peculiarity of this proof; it should be possible to replace the defer
 tactic with the last tactic in the proof in the final lemma. The author was
 unable to piece together why this does not work and probably should be answered
 as it may be relevant to future proofs.
@@ -217,10 +217,6 @@ as it may be relevant to future proofs.
 install_C_file "./sum.c"
 autocorres [ ts_rules = nondet ] "./sum.c"
 context sum begin
-
-(* uint_plus_simple, word_of_int_inverse*)
-(* Talk about the difficulty in finding the lemma that should be used and the
-   amount of time spent recreating the wheel in with respect to this lemma. *)
 
 lemma invariant:"
 \<lbrakk> 0 \<le> x
@@ -295,7 +291,11 @@ lemma "
 apply (unfold sum'_def)
 apply clarsimp
 apply (subst whileLoop_add_inv [where 
-        I = " \<lambda> (r,i) a. x \<ge> 0 \<and> 2^32 > x \<and> (((2 * uint (result_C r) = (x * (x + 1)) - (uint i * ((uint i) + 1)))) \<or> overflow_C r = 1)" 
+        I = " \<lambda> (r,i) a. x \<ge> 0 
+                         \<and> 2^32 > x 
+                         \<and> (((2 * uint (result_C r) 
+                            = (x * (x + 1)) - (uint i * ((uint i) + 1)))) 
+                            \<or> overflow_C r = 1)" 
         and M = "\<lambda>((_,i),a). unat i"])
 apply wp 
 apply clarsimp
@@ -307,29 +307,26 @@ using invariant apply auto
 done
 
 end
+
 text{*
 
 \section{Final Notes}
 
-This exercise can be used to capture some guidelines when proving properties
-about mathematical computations on integers:
-
-1) Attempt to minimize the need for natural number subtraction; it can 
-   unnecessarily complicate reason. When not avoided, additional properties may
-   have to be shown to handle cases where traditional integer subtraction is 
-   truncated.
+1) Attempt to minimize the need for natural number subtraction; it can
+unnecessarily complicate reasoning. When not avoidable, additional properties
+may have to be shown to handle cases where traditional integer subtraction is
+truncated.
 
 2) Code should explicitly check and handle possible occurrences of integer
-   overflow/underflow. There seems to be no simple way in AutoCorress to prove
-   properties under the assumption that the code does not exhibit such errors
-   without explicitly handling them within the code.
+overflow/underflow. There seems to be no simple way in AutoCorress to prove
+properties under the assumption that the code does not exhibit such errors
+without explicitly handling them within the code.
 
-3) If a top-level proof requires algebraic manipulations
-   involving conversion between words and more primitive types (e.g., integers),
-   identities will likely need to be proved separately, in basic steps, using
-   ISAR proofs.
+3) If a top-level proof requires algebraic manipulations involving conversion
+between words and more primitive types (e.g., integers), identities may need to
+be proved separately, in basic steps, using ISAR proofs.
 
-The sum function defined in c is also less then satisfactory; it continues to 
+The sum function defined in C is also less than satisfactory; it continues to
 aggregate a value after overflow has been detected. A better implementation
 might make use of the "break" statement. Dealing with break requires more
 sophisticated use of the AutoCorress tool and will be explored in other
