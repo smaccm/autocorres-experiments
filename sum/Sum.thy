@@ -56,19 +56,6 @@ proof -
      = x * (x + 1) - (uint b * uint b + uint b) + 2 * uint b" 
     by (metis (no_types, hide_lams) diff_diff_eq2 
         diff_zero mult.right_neutral mult_eq_0_iff right_diff_distrib)
-(*  then have 
-    "2 * uint (result_C a + b) 
-     = x * (x + 1) - uint b * uint b - uint b + 2 * uint b" 
-    by simp
-  then have 
-    "2 * uint (result_C a + b) = x * (x + 1) - uint b * uint b + uint b" 
-    by simp
-  then have 
-    "2 * uint (result_C a + b) = x * (x + 1) - (uint b * uint b - uint b)" 
-    by simp
-  then have 
-    "2 * uint (result_C a + b) = x * (x + 1) - (uint b * (uint b - 1))" 
-    by (simp add: int_distrib(4)) *)
   then have 
     "2 * uint (result_C a + b) = x * (x + 1) - ((uint b - 1) * uint b)" 
     by (simp add: mult.commute right_diff_distrib)

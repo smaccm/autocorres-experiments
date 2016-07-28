@@ -16,12 +16,19 @@ llnode * find_insertion(unsigned int val, llnode * it) {
   return last;
 }
 
-int insert(llnode * insert, llnode * front) {
-  if(insert == NULL) { return 0; }
-  else {
-    llnode * ip = find_insertion(insert->val, front);
-    if(insert->val == ip->val) { return 0; }
-    else if(ip == NULL) { insert->next = front; return 1;}
-    else { insert->next = ip->next; ip->next = insert; return 1;}
+llnode * insert(llnode * insert, llnode * front) {
+  llnode * ip = NULL;
+
+  ip  = find_insertion(insert->val, front);
+  if(front == NULL || ip == NULL) { 
+    insert->next = NULL;
+    return insert; 
   }
+  if(insert->val == ip->val) 
+  { 
+    return front; 
+  }
+  insert->next = ip->next;
+  ip->next = insert; 
+  return front;
 }

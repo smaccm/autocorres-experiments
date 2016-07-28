@@ -216,16 +216,18 @@ proof -
 qed
 
 definition R where
-"R s val front xs r d \<equiv> 
-(r \<noteq> NULL \<longrightarrow> 
-    (\<exists> ys zs. xs = 
+"R s val front xs r d \<equiv>
+s = d 
+\<and> (r \<noteq> NULL \<longrightarrow> 
+    front \<noteq> NULL
+    \<and> (\<exists> ys zs. xs = 
       ys @ [r] @ zs 
       \<and> (\<forall> y \<in> set ys. s[y]\<rightarrow>val < s[r]\<rightarrow>val)
       \<and> s[r]\<rightarrow>val \<le> val 
       \<and> (\<forall> z \<in> set zs. s[r]\<rightarrow>val < s[z]\<rightarrow>val)))
-\<and> (r = NULL \<longrightarrow> front \<noteq> NULL \<longrightarrow> (\<forall> x \<in> set xs. val < s[x]\<rightarrow>val))"
+\<and> (r = NULL \<longrightarrow> front \<noteq> NULL \<longrightarrow>  (\<forall> x \<in> set xs. val < s[x]\<rightarrow>val))"
 
-lemma find_insertion[wp]:"
+lemma find_insertion:"
 \<lbrace> \<lambda> (s::lifted_globals). 
 s' = s
 \<and> ll s' front xs
@@ -240,27 +242,50 @@ apply (rule validNF_assume_pre)
 apply (rule validNF_chain)
 apply (rule find_insertion_weak[of s' front xs]) 
 apply(unfold R_def)
-using insertion_found lt_first_lt_all apply (unfold R_def | clarsimp | simp)+
+apply clarsimp+
+apply (rule conjI impI)+
+apply (metis in_set_insert insert_Nil list.distinct(1) ll.ll.elims(2))
+apply auto
+using insertion_found lt_first_lt_all apply simp+
 done
 
+thm validNF_chain
+thm use_validNF
 
+lemma support:" \<lbrakk>is_valid_llnode_C s i; i \<noteq> NULL\<rbrakk>
+         \<Longrightarrow> \<exists>xs. ll s[i\<rightarrow>next := NULL] i xs \<and> sorted (map (ll.get_llnode_val s) xs) \<and> distinct (map (ll.get_llnode_val s) xs)"
+proof -
+  assume a1:"is_valid_llnode_C s i"
+  assume a2:"i \<noteq> NULL"
+  then have "ll s[i\<rightarrow>next := NULL] (s[i\<rightarrow>next := NULL])[i]\<rightarrow>next []" by (simp add: fun_upd_apply)
+  then have "ll s[i\<rightarrow>next := NULL] i [i]" using a1 a2 by auto
+  thus ?thesis by (metis distinct_singleton list.simps(8) list.simps(9) sorted_single)
+qed
 
+(* Still working on this. *)
 lemma "
 \<lbrace> \<lambda> (s::lifted_globals). 
-ll s front xs
+ ll s front xs
 \<and> is_valid_llnode_C s i
+\<and> i \<noteq> NULL
 \<and> sorted (map (\<lambda> x. s[x]\<rightarrow>val) xs)
 \<and> distinct (map (\<lambda> x. s[x]\<rightarrow>val) xs)
 \<rbrace>
   insert' i  front
 \<lbrace> \<lambda> r s. 
-\<exists> xs. ll s front xs
-\<and> sorted (map (\<lambda> x. s[x]\<rightarrow>val) xs)
-\<and> distinct (map (\<lambda> x. s[x]\<rightarrow>val) xs)
+(\<exists> xs. ll s r xs
+  \<and> sorted (map (\<lambda> x. s[x]\<rightarrow>val) xs)
+  \<and> distinct (map (\<lambda> x. s[x]\<rightarrow>val) xs))
  \<rbrace>!"
+apply (rule validNF_assume_pre)
 apply (unfold insert'_def)
-apply (rule condition_wp)
+apply wp
+apply clarsimp
+apply (rule validNF_chain)
+apply (rule find_insertion)
+apply (unfold R_def)
+apply simp+
+apply auto
 
-end
-
+oops
 end
