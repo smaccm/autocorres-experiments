@@ -50,11 +50,14 @@ lemma nth_to_offset[simp]:"\<lbrakk>array h p l xs; l' < l \<rbrakk> \<Longright
 
 lemma "
 \<lbrace> \<lambda> (h::lifted_globals). 
-array h p l xs
-\<and> l < UINT_MAX
-\<and> h' = h \<rbrace> 
+  array h p l xs
+  \<and> l < UINT_MAX
+  \<and> h' = h \<rbrace> 
  max' p l
-\<lbrace> \<lambda> (m::nat) (h::lifted_globals). h' = h \<and> (\<forall> j<l. xs ! j \<le> m) \<and> (\<exists> k<l. xs ! k = m)\<rbrace>!
+\<lbrace> \<lambda> (m::nat) (h::lifted_globals). 
+  h' = h 
+  \<and> (\<forall> j<l. unat h'[p +\<^sub>p int j] \<le> m) 
+  \<and> (\<exists> k<l. unat h'[p +\<^sub>p int k] = m)\<rbrace>!
 "
 apply (rule validNF_assume_pre)
 apply (unfold max'_def)
@@ -72,6 +75,6 @@ apply wp
 apply (insert all_valid nth_to_offset less_Suc_eq)
 apply (clarsimp simp add: uint_nat unat_less_helper diff_less_mono2 word_1_0 not_less_iff_gr_or_eq)
 apply (auto simp add: uint_nat unat_less_helper diff_less_mono2 word_1_0 not_less_iff_gr_or_eq)
-apply (simp add: nth_to_offset_raw)+
+apply (auto simp add: nth_to_offset_raw)+
 apply (meson Zero_not_Suc array.cases)+
 done
