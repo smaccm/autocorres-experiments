@@ -18,17 +18,13 @@ llnode * find_insertion(unsigned int val, llnode * it) {
 
 llnode * insert(llnode * insert, llnode * front) {
   llnode * ip = NULL;
-
   ip  = find_insertion(insert->val, front);
-  if(front == NULL || ip == NULL) { 
-    insert->next = NULL;
+  if(ip == NULL) { 
+    insert->next = front;
     return insert; 
+  } else {
+    insert->next = ip->next;
+    ip->next = insert; 
+    return front;
   }
-  if(insert->val == ip->val) 
-  { 
-    return front; 
-  }
-  insert->next = ip->next;
-  ip->next = insert; 
-  return front;
 }
