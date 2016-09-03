@@ -11,13 +11,6 @@ struct integer_result sum(const unsigned int x) {
 
   struct integer_result r = {0,0};
   while (x > 0) {
-    /* Technically, "<" could be used here instead of "<=". However, this
-       increase the difficulty of the proof because when considering a loop 
-       invariant we need a logical mechanism to deal with what happens when
-       "x = 0". This case however is absurd since we would never be in the loop
-       to begin with if "x = 0". */
-    /* For improved efficiency, we might add a break in the body of this if 
-       condition. Again, that complicates the proof. */
     if( r.result+x <= r.result ) {
       r.overflow = 1;
     } 

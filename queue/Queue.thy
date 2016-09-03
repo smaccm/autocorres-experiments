@@ -1,7 +1,14 @@
-(* Proof constructed by Andrew Jude Gacek:http://loonwerks.com/people/andrew-gacek.html *)
 theory Queue
 imports "../l4v/tools/autocorres/AutoCorres"
 begin
+
+text{* 
+
+Author: Andrew Gacek
+Description: Correctness proofs for enqueue and dequeue operations on a circular queue.
+
+*}
+
 
 type_synonym 'a queue = "'a list \<times> nat \<times> nat"
 

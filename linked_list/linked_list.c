@@ -1,14 +1,12 @@
-#include <malloc.h>
+#include <stddef.h>
 
-#define NULL ((void*)0)
+typedef struct ll {
+  int val;
+  struct ll * next;
+} ll;
 
-typedef struct llnode {
-  unsigned int val;
-  struct llnode * next;
-} llnode;
-
-llnode * find_insertion(unsigned int val, llnode * it) {
-  llnode * last = NULL;
+ll * find_insertion(int val, ll * it) {
+  ll * last = NULL;
   while (it != NULL && it->val <= val) {
     last = it;
     it = it->next;
@@ -16,8 +14,8 @@ llnode * find_insertion(unsigned int val, llnode * it) {
   return last;
 }
 
-llnode * insert(llnode * insert, llnode * front) {
-  llnode * ip = NULL;
+ll * insert(ll * insert, ll * front) {
+  ll * ip = NULL;
   ip  = find_insertion(insert->val, front);
   if(ip == NULL) { 
     insert->next = front;

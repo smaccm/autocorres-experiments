@@ -1,6 +1,17 @@
 theory Max_DWD imports
   "../../tools/autocorres/AutoCorres"
 begin
+text{* 
+
+Author: Dan DaCosta
+Description: Correctness proof for a function that finds the max value in an array. The correctness
+in this case is based on the following declarative statements:
+
+ - The max in a list should be greater than or equal to all elements in the list.
+
+ - The max in a list should be equal to at least one element in the list.
+
+*}
 
 install_C_file max_DWD.c
 autocorres [ heap_abs_syntax, ts_rules = nondet, unsigned_word_abs = max ] max_DWD.c

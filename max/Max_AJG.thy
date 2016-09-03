@@ -1,9 +1,15 @@
-(* Author: Andrew Gacek [http://loonwerks.com/people/andrew-gacek.html] *)
 theory Max_AJG
 imports "../l4v/tools/autocorres/AutoCorres"
 begin
 
-(* Based on Quicksort.thy *)
+text{* 
+
+Author: Andrew Gacek
+Description: Correctness proof for a function that finds the max value in an array. The correctness
+in this case is based on comparing the C code with that of a functional specification of a max 
+function over a list in Isabelle/HOL.
+
+*}
 
 install_C_file max_AJG.c
 autocorres[ts_rules = nondet, unsigned_word_abs = max, heap_abs_syntax] max_AJG.c
