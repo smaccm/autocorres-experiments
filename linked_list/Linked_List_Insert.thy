@@ -413,12 +413,12 @@ qed
 
 lemma d:"\<lbrakk>n \<noteq> NULL; is_valid_ll_C s' n; s'[n]\<rightarrow>next = NULL; list (lkup s') xs' i; n \<notin> set xs'; r \<in> set xs'; path (lkup s') i xs1 NULL; \<forall>x\<in>set xs1. sint s'[x]\<rightarrow>val \<le> val'param;
         s'[r]\<rightarrow>next = NULL\<rbrakk>
-       \<Longrightarrow> \<exists>xs. list (lkup s'[n\<rightarrow>next := NULL][r\<rightarrow>next := n]) xs i \<and> n \<in> set xs"
+       \<Longrightarrow> \<exists>xs. list (lkup s'[n\<rightarrow>next := NULL][r\<rightarrow>next := n]) xs i \<and> insert n (set xs') = set xs"
 sorry
 
-lemma e:"       \<lbrakk>n \<noteq> NULL; is_valid_ll_C s' n; s'[n]\<rightarrow>next = NULL; list (lkup s') xs' i; n \<notin> set xs'; r \<in> set xs'; path (lkup s') i xs1 s'[r]\<rightarrow>next; path (lkup s') s'[r]\<rightarrow>next xs2 NULL;
+lemma e:" \<lbrakk>n \<noteq> NULL; is_valid_ll_C s' n; s'[n]\<rightarrow>next = NULL; list (lkup s') xs' i; n \<notin> set xs'; r \<in> set xs'; path (lkup s') i xs1 s'[r]\<rightarrow>next; path (lkup s') s'[r]\<rightarrow>next xs2 NULL;
         \<forall>x\<in>set xs1. sint s'[x]\<rightarrow>val \<le> val'param; s'[r]\<rightarrow>next \<noteq> NULL; val'param < sint s'[s'[r]\<rightarrow>next]\<rightarrow>val\<rbrakk>
-       \<Longrightarrow> \<exists>xs. list (lkup s'[n\<rightarrow>next := s'[r]\<rightarrow>next][r\<rightarrow>next := n]) xs i \<and> n \<in> set xs"
+       \<Longrightarrow> \<exists>xs. list (lkup s'[n\<rightarrow>next := s'[r]\<rightarrow>next][r\<rightarrow>next := n]) xs i \<and> insert n (set xs') = set xs"
 sorry
 
 
@@ -456,7 +456,7 @@ lemma "\<lbrace> \<lambda> (s::lifted_globals).
   \<and> list (lkup s) xs' i 
   \<and> n \<notin> set xs'\<rbrace>
   insert' n i
-\<lbrace> \<lambda> r s. (\<exists> xs . list (lkup s) xs r \<and> n \<in> set xs)\<rbrace>!"
+\<lbrace> \<lambda> r s. (\<exists> xs . list (lkup s) xs r \<and> set (n # xs') = set xs)\<rbrace>!"
  apply (rule validNF_assume_pre)
  apply (unfold insert'_def)
  apply wp
