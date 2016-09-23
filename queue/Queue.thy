@@ -45,9 +45,7 @@ by (cases q, auto simp: gr0_conv_Suc)
 
 lemma nth_rotate1:
   "i < length xs \<Longrightarrow> rotate1 xs ! i = (if Suc i < length xs then xs ! (Suc i) else xs ! 0)"
-apply (cases "xs = []", simp)
-apply (auto simp: rotate1_hd_tl nth_append nth_tl hd_conv_nth)
-done
+by (cases "xs = []", auto simp: rotate1_hd_tl nth_append nth_tl hd_conv_nth)
 
 lemma nth_rotate1_mod:
   "0 < length xs \<Longrightarrow> rotate1 xs ! (i mod length xs) = xs ! (Suc i mod length xs)"
@@ -55,26 +53,19 @@ by (metis hd_rotate_conv_nth length_greater_0_conv length_rotate1 rotate1_rotate
 
 lemma rotate1_Suc_update:
   "rotate1 (xs[Suc n mod length xs := x]) = (rotate1 xs)[n mod length xs := x]"
-apply (cases "xs = []", simp)
-apply (auto simp: mod_Suc nth_list_update nth_rotate1 intro: nth_equalityI)
-done
+by (cases "xs = []", auto simp: mod_Suc nth_list_update nth_rotate1 intro: nth_equalityI)
 
-lemma take_rotate_update:
-  "n < length xs \<Longrightarrow> take n (rotate f (xs[(f + n) mod length xs := x])) = take n (rotate f xs)"
-apply (induction f arbitrary: xs)
-apply (auto simp: rotate1_rotate_swap rotate1_Suc_update)
-apply (metis length_rotate1)
-done
+lemma rotate_update:
+  "rotate f (xs[(f + n) mod length xs := x]) = rotate f xs[n mod length xs := x]"
+by (induction f arbitrary: n, simp_all, metis rotate1_Suc_update length_rotate add_Suc_right)
 
 lemma nth_rotate:
   "n < length xs \<Longrightarrow> (rotate f xs) ! n = xs ! ((f + n) mod length xs)"
-apply (induction f arbitrary: xs)
-apply (auto simp: rotate1_rotate_swap nth_rotate1_mod length_ineq_not_Nil)
-done
+by (induction f arbitrary: xs, auto simp: rotate1_rotate_swap nth_rotate1_mod length_ineq_not_Nil)
 
 lemma enqueue_rep:
   "\<lbrakk> wf q; \<not>is_full q \<rbrakk> \<Longrightarrow> rep (enqueue q x) = rep q @ [x]"
-by (cases q, auto simp: take_Suc_conv_app_nth take_rotate_update nth_rotate)
+by (cases q, auto simp: take_Suc_conv_app_nth rotate_update nth_rotate)
 
 lemma dequeue_rep:
   "\<lbrakk> wf q; \<not>is_empty q; dequeue q = (x, q') \<rbrakk> \<Longrightarrow> rep q = x # rep q'"
@@ -119,7 +110,8 @@ lemma list_array_update:
 by (auto simp add: list_array_def nth_list_update intro: nth_equalityI)
 
 lemma enqueue_not_full:
-  "(\<And>c n s. P (s\<lparr>contents_'' := c, length_'' := n\<rparr>) = P s) \<Longrightarrow>
+  "(\<And>s c. P (s\<lparr>contents_'' := c\<rparr>) = P s) \<Longrightarrow>
+   (\<And>s n. P (s\<lparr>length_'' := n\<rparr>) = P s) \<Longrightarrow>
    \<lbrace> \<lambda>s. is_queue s \<and>
          q = the_queue s \<and>
          queue_length q < 10 \<and>
@@ -153,11 +145,9 @@ apply (auto simp: is_queue_def the_queue_def unat_arith_simps)
 done
 
 lemma dequeue_not_empty:
-  "(\<And>f n s. P (s\<lparr>front_'' := f, length_'' := n\<rparr>) = P s) \<Longrightarrow>
+  "(\<And>s f. P (s\<lparr>front_'' := f\<rparr>) = P s) \<Longrightarrow>
+   (\<And>s n. P (s\<lparr>length_'' := n\<rparr>) = P s) \<Longrightarrow>
    (\<And>s v. P (s[x := v]) = P s) \<Longrightarrow>
-   (\<And>s v. contents_'' (s[x := v]) = contents_'' s) \<Longrightarrow>
-   (\<And>s v. front_'' (s[x := v]) = front_'' s) \<Longrightarrow>
-   (\<And>s v. length_'' (s[x := v]) = length_'' s) \<Longrightarrow>
    \<lbrace> \<lambda>s. is_queue s \<and>
          q = the_queue s \<and>
          queue_length q > 0 \<and>
@@ -170,9 +160,8 @@ lemma dequeue_not_empty:
            P s \<rbrace>!"
 apply (unfold dequeue'_def)
 apply wp
-apply (auto simp add: fun_upd_def is_queue_def the_queue_def
-                      gr0_conv_Suc list_array_nth unat_arith_simps
-            simp del: word_unat.Rep_inject[symmetric])
+apply (auto simp: fun_upd_def is_queue_def the_queue_def queue.update_w8_def
+                  gr0_conv_Suc list_array_nth unat_arith_simps)
 done
 
 end
