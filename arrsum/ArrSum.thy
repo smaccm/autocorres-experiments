@@ -30,8 +30,14 @@ fun the_array :: "lifted_globals \<Rightarrow> 32 word ptr \<Rightarrow> 32 word
 "the_array s a [] = True"
 |"the_array s a (w # ws) = (w = s[a] \<and> is_valid_w32 s a \<and> the_array s (a +\<^sub>p 1) ws)" 
 
-lemma the_array_all_valid:
- "\<lbrakk>the_array s a ws; (i::32 word) < of_nat (length ws)\<rbrakk> \<Longrightarrow> is_valid_w32 s (a +\<^sub>p uint i)"
+lemma drop_extend_eq:"0 < n \<Longrightarrow> drop (n-1) xs = drop n (x # xs)"
+ apply (induction n) by auto
+
+lemma drop_unat_extend_eq:"0 < (n::32 word) \<Longrightarrow> drop (unat (n-1)) xs = drop (unat n) (x # xs)"
+by (metis arrsum.drop_extend_eq unat_0 unat_minus_one unat_mono word_gt_0)
+
+lemma the_array_offsets:
+ "\<lbrakk>the_array s a ws; (i::32 word) < of_nat (length ws)\<rbrakk> \<Longrightarrow> the_array s (a +\<^sub>p uint i) (drop (unat i) ws)"
 proof(induction ws arbitrary: a i)
   case Nil
   thus ?case by auto
@@ -47,36 +53,25 @@ next
     then have "i - 1 < of_nat (length ws)" 
       by (metis (no_types) Cons.prems(2) add.commute gt0_iff_gem1 le_less_trans length_Cons 
           not_less plus_one_helper semiring_1_class.of_nat_simps(2))
-    then have "is_valid_w32 s (a +\<^sub>p 1 +\<^sub>p uint (i - 1))" using Cons by auto
-    thus ?case using Cons 
-    by (metis (no_types) a add.commute arrsum.ptr_add_assoc diff_add_cancel diff_zero uint_1 
-        uint_eq_0 uint_sub_lem word_less_def zless_imp_add1_zle)
+    then have "the_array s (a +\<^sub>p 1 +\<^sub>p uint (i - 1)) (drop (unat (i - 1)) ws)" using Cons by auto
+    then have "the_array s (a +\<^sub>p uint i) (drop (unat (i - 1)) ws)" 
+    by (metis (no_types, hide_lams) Suc_unat_minus_one a arrsum.ptr_add_assoc of_nat_Suc uint_nat word_not_simps(1))
+    thus ?case using drop_unat_extend_eq[OF a,of ws w] by auto
   qed
 qed
 
+lemma drop_not_empty:"i < length xs \<Longrightarrow> drop i xs \<noteq> []"
+by auto
+
+lemma the_array_all_valid:
+ "\<lbrakk>the_array s a ws; (i::32 word) < of_nat (length ws)\<rbrakk> \<Longrightarrow> is_valid_w32 s (a +\<^sub>p uint i)"
+using the_array_offsets drop_not_empty by (metis arrsum.the_array.elims(2) unat_less_helper)
+
 lemma the_array_list_corres:
 "\<lbrakk>the_array s a ws; (i::32 word) < of_nat (length ws)\<rbrakk> \<Longrightarrow> s[a +\<^sub>p uint i] = ws ! (unat i)"
-proof(induction ws arbitrary: a i)
-  case Nil
-  thus ?case by auto
-next
-  case (Cons w ws)
-  then have "0 = i \<or> 0 < i" using word_neq_0_conv by blast 
-  thus ?case
-  proof
-    assume "0 = i"
-    thus ?case using Cons by auto
-  next 
-    assume a:"0 < i"
-    then have "i - 1 < of_nat (length ws)" 
-      by (metis (no_types) Cons.prems(2) add.commute gt0_iff_gem1 le_less_trans length_Cons 
-          not_less plus_one_helper semiring_1_class.of_nat_simps(2))
-    then have "s[a +\<^sub>p 1 +\<^sub>p uint (i - 1)] = ws ! (unat (i - 1))" using Cons by auto
-    thus ?case using Cons 
-    by (metis (mono_tags) Suc_pred' a arrsum.ptr_add_assoc nat.simps(3) nth_Cons' of_nat_Suc 
-        uint_nat unat_0 unat_minus_one word_less_nat_alt)
-  qed
-qed
+using the_array_offsets drop_not_empty
+  by (metis (no_types, hide_lams) arrsum.the_array.simps(2) drop_0 hd_drop_conv_nth
+      length_greater_0_conv list.exhaust nth_Cons_0 unat_less_helper)
 
 lemma word_ge_zero[simp]:"(x::32 word) = 0 \<or> 0 < x"
 using word_neq_0_conv by blast
