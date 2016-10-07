@@ -418,10 +418,10 @@ qed
 
 lemma path_one_step:"\<lbrakk>path (lkup s) i xs j; i\<noteq> NULL; xs \<noteq> []\<rbrakk> \<Longrightarrow> path (lkup s) s[i]\<rightarrow>next (tl xs) j"
  apply(induction xs arbitrary: i) by auto
-
+(*
 lemma path_cannot_cycle:"\<lbrakk>list (lkup s) xs i; j \<in> set xs; path (lkup s) i ys s[j]\<rightarrow>next\<rbrakk> \<Longrightarrow> ys \<noteq> []"
 sorry
-
+*)
 
 lemma lkup_valid_eval:"is_valid_ll_C s i \<Longrightarrow> lkup s i = Some s[i]"
   using lkup_def by metis
@@ -505,7 +505,7 @@ next
     assume a:"r \<in> set xs"
     then have h1:"list (lkup s) xs s[i]\<rightarrow>next" using Cons by auto
     then have h2:"path (lkup s) s[i]\<rightarrow>next (tl xs1) s[r]\<rightarrow>next" using path_one_step[OF Cons(7)] 
-      using Cons.prems(3) Cons.prems(5) Cons.prems(6) linked_list.list_non_empty linked_list.path_cannot_cycle by presburger
+       Cons.prems(3) Cons.prems(5) Cons.prems(6) linked_list.list_non_empty by (metis Linked_List_Insert.linked_list.list_next a distinct.simps(2) linked_list.list_distinct linked_list.path.simps(1))
     then have h3:"n \<notin> set xs" using Cons by auto
     then have h4:"list (lkup s[n\<rightarrow>next := s[r]\<rightarrow>next][r\<rightarrow>next := n]) (tl xs1 @ [n] @ xs2) s[i]\<rightarrow>next" and h45:"insert n (set xs) = set (tl xs1 @ [n] @ xs2)"
     using Cons(1)[OF Cons(2) Cons(3) h1 h3 a h2 Cons(8)] by auto
