@@ -392,6 +392,11 @@ lemma next_update_preserve_validity:"is_valid_ll_C s i = is_valid_ll_C s[j\<righ
 lemma next_update_preserve_untouched_state:"x \<noteq> y \<Longrightarrow> lkup s x = lkup s[y\<rightarrow>next := v] x"
  apply(unfold lkup_def) by (simp add: linked_list.update_ll_next_def)
 
+lemma next_update_preserve_path:"\<lbrakk>i \<notin> set xs; path (lkup s) j xs k\<rbrakk> \<Longrightarrow> path (lkup s[i\<rightarrow>next := l]) j xs k"
+  apply(induction xs arbitrary: j)
+  apply auto
+  using linked_list.next_update_preserve_untouched_state by auto
+
 lemma non_member_next_update_preserves_list:"\<lbrakk>list (lkup s) xs i; n \<notin> set xs\<rbrakk> \<Longrightarrow> list (lkup s[n\<rightarrow>next := j]) xs i"
 proof (induction xs arbitrary: i) 
   case Nil
@@ -404,23 +409,28 @@ next
   have h5:"is_valid_ll_C s[n\<rightarrow>next := j] i" using next_update_preserve_validity Cons by auto
   have h6:"i \<noteq> NULL" using Cons by auto
   obtain di where h7:"lkup s i = Some di" using Cons by auto
-  have h8:"lkup s[n\<rightarrow>next := j] i = Some di" using next_update_preserve_untouched_state[OF h4,of s x] h7 by auto
+  have h8:"lkup s[n\<rightarrow>next := j] i = Some di" using next_update_preserve_untouched_state[OF h4,of s x] h7 using h4 linked_list.next_update_preserve_untouched_state by presburger
   have h9:"s[n\<rightarrow>next := j][i]\<rightarrow>next = next_C di" using h8 by auto
   have h10:"s[i]\<rightarrow>next = s[n\<rightarrow>next := j][i]\<rightarrow>next" using h4 by simp
   have h11:"list (lkup s[n\<rightarrow>next := j]) xs s[n\<rightarrow>next := j][i]\<rightarrow>next" using Cons(1)[OF h1 h3] h10 by auto
   thus ?case using h2 h6 h8 h11 h9 by auto
 qed
 
-lemma d:"\<lbrakk>n \<noteq> NULL; is_valid_ll_C s' n; s'[n]\<rightarrow>next = NULL; list (lkup s') xs' i; n \<notin> set xs'; r \<in> set xs'; path (lkup s') i xs1 NULL; \<forall>x\<in>set xs1. sint s'[x]\<rightarrow>val \<le> val'param;
-        s'[r]\<rightarrow>next = NULL\<rbrakk>
-       \<Longrightarrow> \<exists>xs. list (lkup s'[n\<rightarrow>next := NULL][r\<rightarrow>next := n]) xs i \<and> insert n (set xs') = set xs"
+lemma path_one_step:"\<lbrakk>path (lkup s) i xs j; i\<noteq> NULL; xs \<noteq> []\<rbrakk> \<Longrightarrow> path (lkup s) s[i]\<rightarrow>next (tl xs) j"
+ apply(induction xs arbitrary: i) by auto
+
+lemma path_cannot_cycle:"\<lbrakk>list (lkup s) xs i; j \<in> set xs; path (lkup s) i ys s[j]\<rightarrow>next\<rbrakk> \<Longrightarrow> ys \<noteq> []"
 sorry
 
-lemma e:" \<lbrakk>n \<noteq> NULL; is_valid_ll_C s' n; s'[n]\<rightarrow>next = NULL; list (lkup s') xs' i; n \<notin> set xs'; r \<in> set xs'; path (lkup s') i xs1 s'[r]\<rightarrow>next; path (lkup s') s'[r]\<rightarrow>next xs2 NULL;
-        \<forall>x\<in>set xs1. sint s'[x]\<rightarrow>val \<le> val'param; s'[r]\<rightarrow>next \<noteq> NULL; val'param < sint s'[s'[r]\<rightarrow>next]\<rightarrow>val\<rbrakk>
-       \<Longrightarrow> \<exists>xs. list (lkup s'[n\<rightarrow>next := s'[r]\<rightarrow>next][r\<rightarrow>next := n]) xs i \<and> insert n (set xs') = set xs"
-sorry
 
+lemma lkup_valid_eval:"is_valid_ll_C s i \<Longrightarrow> lkup s i = Some s[i]"
+  using lkup_def by metis
+
+lemma list_last_element:"\<lbrakk>list (lkup s) xs i; n \<notin> set xs;  r \<in> set xs; s[r]\<rightarrow>next = NULL\<rbrakk> \<Longrightarrow> last xs = r"
+  apply(induction xs arbitrary: i) by auto
+
+lemma hd_last_not_equal_if_distinct:"\<lbrakk>distinct xs; length xs > 1\<rbrakk> \<Longrightarrow> hd xs \<noteq> last xs"
+  apply(induction xs) by auto
 
 lemma insert_front:
 "\<lbrakk>n \<noteq> NULL; is_valid_ll_C s n; list (lkup s) xs i; n \<notin> set xs\<rbrakk> 
@@ -435,6 +445,83 @@ proof -
   obtain dn where h3:"lkup s[n\<rightarrow>next := i] n = Some dn" by (metis h1 lkup_def)
   have h4:"next_C dn = i" using lkup_conv[OF h3] by simp
   thus ?thesis using a1 h3 h2 h4 by auto
+qed
+
+lemma insert_back:
+"\<lbrakk>n \<noteq> NULL; is_valid_ll_C s n; list (lkup s) xs i; n \<notin> set xs;  last xs = r; xs \<noteq> []\<rbrakk> 
+   \<Longrightarrow> list (lkup s[n\<rightarrow>next := NULL][r\<rightarrow>next := n]) (xs@[n]) i  \<and> insert n (set xs) = set (xs@[n])"
+proof (induction xs arbitrary: i)
+  case Nil
+  thus ?case by auto
+next
+  case (Cons x xs)
+  have h2:"list (lkup s) xs s[i]\<rightarrow>next" and h3:"x = i" and h4:"i \<noteq> NULL" using Cons by auto
+  have h5:"(last xs = r \<and> xs \<noteq> []) \<or> xs = []" using Cons by auto
+  thus ?case
+  proof
+    assume a:"last xs = r \<and> xs \<noteq> []"
+    have "length (x # xs) > 1" using a Cons by auto
+    then have "r \<noteq> i" by (metis Cons.prems(3) Cons.prems(5) h3 list.sel(1) hd_last_not_equal_if_distinct list_distinct)
+    then have h6:"lkup s i = lkup s[n\<rightarrow>next := NULL][r\<rightarrow>next := n] i" by (metis List.list.simps(15) h3 insert_iff Cons next_update_preserve_untouched_state )
+    have "is_valid_ll_C s[n\<rightarrow>next := NULL][r\<rightarrow>next := n] i" using Cons next_update_preserve_validity linked_list.list_non_empty by presburger
+    thus ?case using Cons h2 h3 h4 a h6 by auto
+  next 
+    assume "xs = []"
+    then have "list (lkup s[n\<rightarrow>next := NULL][r\<rightarrow>next := n]) ((x # xs) @ [n]) i" using Cons 
+    by (metis (no_types, hide_lams) append.simps(1) append.simps(2) empty_iff insert_front last_in_set linked_list.heap_abs_simps(36) linked_list.list_empty list.set(1) list_non_empty set_ConsD) 
+    thus ?case using Cons by auto
+  qed
+qed
+
+lemma insert_middle:" \<lbrakk>n \<noteq> NULL; is_valid_ll_C s n; list (lkup s) xs i; n \<notin> set xs; r \<in> set xs; path (lkup s) i xs1 s[r]\<rightarrow>next; path (lkup s) s[r]\<rightarrow>next xs2 NULL\<rbrakk>
+       \<Longrightarrow> list (lkup s[n\<rightarrow>next := s[r]\<rightarrow>next][r\<rightarrow>next := n]) (xs1@[n]@xs2) i \<and> insert n (set xs) = set (xs1@[n]@xs2)"
+proof (induction xs arbitrary: i xs1)
+  case Nil
+  thus ?case by auto
+next 
+  case (Cons x xs)
+  then have h1:"x = i" by auto
+  then have "r = x \<or> r \<in> set xs" using Cons by auto
+  thus ?case
+  proof
+    assume a:"r = x"
+    then have h2:"r = i" using h1 by auto
+    then have h3:"r \<notin> set xs2" using a Cons list_distinct by (metis linked_list.get_ll_next_def linked_list.list_head_not_in_list linked_list.path_null_list list_non_empty lkup_def)
+    then have "xs1 @ xs = i # xs"
+      by (metis (no_types) Cons h2 h1 linked_list.list_non_empty_recursive linked_list.list_split linked_list.list_unique)
+    then have h4:"xs1 = [r]" using h2 by auto
+    then have "path (lkup s) i [r] s[r]\<rightarrow>next" using Cons by auto
+    then have h5:"path (lkup s[n\<rightarrow>next := s[r]\<rightarrow>next]) i [r] s[n\<rightarrow>next := s[r]\<rightarrow>next][i]\<rightarrow>next" using Cons by (metis h2 fun_upd_apply linked_list.heap_abs_simps(16) linked_list.next_update_preserve_path singleton_set)
+    then have h6:"n \<notin> set xs2" using Cons by (metis List.list.simps(15) h2 insert_iff linked_list.list_non_empty_recursive linked_list.list_the_list path_null_list)
+    then have h7:"path (lkup s[n\<rightarrow>next := s[r]\<rightarrow>next]) s[n\<rightarrow>next := s[r]\<rightarrow>next][r]\<rightarrow>next xs2 NULL" using next_update_preserve_path[OF h6 Cons(8)] Cons by auto
+    then have h8:"path (lkup s[n\<rightarrow>next := s[r]\<rightarrow>next][r\<rightarrow>next := n]) n (n#xs2) NULL" using Cons by (metis h3 h6 linked_list.insert_front linked_list.non_member_next_update_preserves_list linked_list.path_null_list set_ConsD)
+    then have h9:"x = i" using a h2 by auto
+    then have h10:"i \<noteq> NULL" using Cons by auto
+    have h11:"lkup s[n\<rightarrow>next := s[r]\<rightarrow>next] r \<noteq> None \<or> [] = xs1" using h5 by auto
+    then have h12:"list (lkup s[n\<rightarrow>next := s[r]\<rightarrow>next][r\<rightarrow>next := n]) (xs1@[n]@xs2) i" using h11 h10 h9 h4 h7 h2 h4 
+    by (metis Cons.prems(1) Cons.prems(2) Cons.prems(4) Cons.prems(7) List.list.simps(15) append_Cons append_Nil h3 h6 insert_iff linked_list.insert_front linked_list.lkup_def linked_list.path_null_list)
+    thus ?thesis using Cons by (metis (mono_tags, hide_lams) List.list.simps(15) a append_Cons append_Nil h4 h9 insert_commute linked_list.list_non_empty_recursive linked_list.list_the_list path_null_list)
+  next
+    assume a:"r \<in> set xs"
+    then have h1:"list (lkup s) xs s[i]\<rightarrow>next" using Cons by auto
+    then have h2:"path (lkup s) s[i]\<rightarrow>next (tl xs1) s[r]\<rightarrow>next" using path_one_step[OF Cons(7)] 
+      using Cons.prems(3) Cons.prems(5) Cons.prems(6) linked_list.list_non_empty linked_list.path_cannot_cycle by presburger
+    then have h3:"n \<notin> set xs" using Cons by auto
+    then have h4:"list (lkup s[n\<rightarrow>next := s[r]\<rightarrow>next][r\<rightarrow>next := n]) (tl xs1 @ [n] @ xs2) s[i]\<rightarrow>next" and h45:"insert n (set xs) = set (tl xs1 @ [n] @ xs2)"
+    using Cons(1)[OF Cons(2) Cons(3) h1 h3 a h2 Cons(8)] by auto
+    then have h5:"list (lkup s[n\<rightarrow>next := s[r]\<rightarrow>next][r\<rightarrow>next := n]) (tl xs1 @ [n] @ xs2) s[n\<rightarrow>next := s[r]\<rightarrow>next][r\<rightarrow>next := n][i]\<rightarrow>next" 
+    by (metis a append.simps(1) distinct.simps(2) fun_upd_apply in_set_conv_decomp linked_list.heap_abs_simps(16) linked_list.list_distinct local.Cons(4) local.Cons(5) local.list.simps(2))
+    then have h6:"i = x" using Cons by (meson linked_list.list.simps(2))
+    then have h7:"x \<noteq> NULL" using Cons using linked_list.list_non_empty by blast
+    then obtain a where  h8:"lkup s[n\<rightarrow>next := s[r]\<rightarrow>next][r\<rightarrow>next := n] i = Some a" by (meson Cons.prems(3) linked_list.heap_abs_simps(36) linked_list.list_non_empty linked_list.lkup_def)
+    then obtain h9:"list (lkup s[n\<rightarrow>next := s[r]\<rightarrow>next][r\<rightarrow>next := n]) (tl xs1 @ [n] @ xs2) (next_C a)"
+    by (metis Cons.prems(3) Cons.prems(4) a append_Nil distinct.simps(2) h4 in_set_conv_decomp linked_list.get_ll_next_def linked_list.list_distinct linked_list.list_non_empty linked_list.lkup_def linked_list.next_update_preserve_untouched_state option.sel)
+    then have h11:"list (lkup s[n\<rightarrow>next := s[r]\<rightarrow>next][r\<rightarrow>next := n]) ((x # tl xs1) @ [n] @ xs2) i" using h6 h7 h8 h9 by auto
+    then have h12:"xs1 = x # tl xs1" using path_one_step[OF Cons(7)] h7 h6
+    by (metis Cons.prems(1) Cons.prems(6) append_Cons append_Nil h1 h3 h4 linked_list.list.simps(2) linked_list.path.simps(2) list.sel(2) list.sel(3) list_mem neq_Nil_conv)  
+    then have h13:"list (lkup s[n\<rightarrow>next := s[r]\<rightarrow>next][r\<rightarrow>next := n]) (xs1 @ [n] @ xs2) i" using h11 h12 by auto
+    thus ?thesis using h13 h45 by (metis List.list.simps(15) append_Cons h12 insert_commute)
+  qed
 qed
 
 lemma gets_maintains_state:
@@ -464,10 +551,11 @@ lemma "\<lbrace> \<lambda> (s::lifted_globals).
    apply safe
       apply (rule else_branch)
        apply (simp add: list_member_not_null)
-      apply (auto intro: list_all_valid d)[1]
+      apply (auto intro: list_all_valid)[1]
+      using insert_back apply (metis linked_list.list_last_element list.distinct(1) list.set_cases)
      apply (rule else_branch)
       apply (simp add: list_member_not_null) 
-     apply (auto intro: list_all_valid e)[1]
+     apply (auto intro: list_all_valid, metis insert_middle)[1]
     apply (auto intro: list_all_valid insert_front)[1]
    apply (auto intro: list_all_valid insert_front)[1]
   apply (rule validNF_gets)
